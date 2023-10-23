@@ -3,9 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../notifications/email/email.service';
 import * as fs from 'fs';
 import * as archiver from 'archiver';
-import * as zlib from 'zlib';
 import { Cluster } from 'puppeteer-cluster';
-import { spawn, spawnSync } from 'child_process';
+import { spawnSync } from 'child_process';
 
 @Injectable()
 export class ConvertService {
@@ -50,15 +49,11 @@ export class ConvertService {
       }
 
       // 압축 해제
-      // const fileContents = fs.createReadStream(zipFilePath, { encoding: 'utf8' });
-      // const writeStream = fs.createWriteStream(unzipPath);
-      // const unzip = zlib.createGunzip();
-      // spawn('unzip', ['-P', 'ThisIsATestPassword', '-d', './lib/tmp/foo', './lib/mocks/tmp/this.zip'])
-      spawnSync('unzip', ['-P', password, '-d', unzipPath, zipFilePath]);
-
-      // 압축 해제된 파일을 생성합니다.
-      // fileContents.pipe(unzip).pipe(writeStream);
-
+      if (password) {
+        spawnSync('unzip', ['-P', password, '-d', unzipPath, zipFilePath]);
+      } else {
+        spawnSync('unzip', ['-d', unzipPath, zipFilePath]);
+      }
       // 압축 해제된 파일 경로를 반환합니다.
       return unzipPath + '/html';
     } catch (err) {
@@ -70,17 +65,16 @@ export class ConvertService {
   async puppeteerConvertCluster(unzipPath: string): Promise<string> {
     // 레포트 결과 폴더가 있다면 파일 리스트를 가져온다
     const originalFilePathList = fs.readdirSync(unzipPath, {
-      encoding: 'utf-8',
+      encoding: 'utf8',
       recursive: true,
     });
-
     // 파일 리스트가 없다면
     if (originalFilePathList.length === 0) {
       throw new BadRequestException('압축파일 내부에 HTML이 존재하지 않습니다.');
     }
 
     // PDF 저장 경로
-    const savePath = `${unzipPath}_pdf_${Date.now()}`;
+    const savePath = `${unzipPath.replace('html/html', '')}pdf_${Date.now()}`;
 
     // 경로가 존재하지 않는다면
     if (!fs.existsSync(savePath)) {
@@ -91,7 +85,7 @@ export class ConvertService {
     // Puppeteer Cluster 생성
     const puppeteerCluster = await Cluster.launch({
       concurrency: Cluster.CONCURRENCY_CONTEXT,
-      maxConcurrency: 10,
+      maxConcurrency: 100,
       // puppeteer,
       puppeteerOptions: {
         executablePath: '/usr/bin/firefox',
@@ -102,7 +96,7 @@ export class ConvertService {
     // 클러스터 작업 생성
     await puppeteerCluster.task(async ({ page, data }) => {
       // 페이지 생성
-      await page.setContent(data.html, { waitUntil: 'networkidle0' });
+      await page.setContent(data.html);
 
       // 1.5초 대기 (페이지 로딩 대기)
       new Promise((res) => setTimeout(res, 1500));
@@ -120,8 +114,8 @@ export class ConvertService {
     await Promise.all(
       originalFilePathList.map(async (fileName: string) => {
         const filePath = unzipPath + '/' + fileName;
-        const html = fs.readFileSync(filePath, { encoding: 'utf-8' });
-        puppeteerCluster.queue({ html, fileName });
+        const html = fs.readFileSync(filePath, { encoding: 'utf8' });
+        await puppeteerCluster.queue({ html, fileName });
       }),
     );
 
@@ -165,7 +159,10 @@ export class ConvertService {
     const savePath = await this.puppeteerConvertCluster(unzipPath);
 
     // PDF 압축
-    const zipFilePath = await this.zipDir(`${savePath}/${fileName}_converted_pdf.zip`, savePath);
+    const zipFilePath = await this.zipDir(
+      `${unzipPath.replace('html/html', '')}${fileName.replace('.zip', '').replace(' ', '')}_converted_pdf.zip`,
+      savePath,
+    );
 
     // 이메일 전송
     const emailResponse = await this.emailService.sendEmail({

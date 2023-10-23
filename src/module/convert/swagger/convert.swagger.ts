@@ -31,3 +31,12 @@ export const CONVERT_API_PARAM: ApiParamOptions = {
     example: 'example@example.com',
   },
 };
+export const CONVERT_API_PARAM2: ApiParamOptions = {
+  name: 'password',
+  description: '압축 파일 비밀번호, 없다면 비워두세요.',
+  required: false,
+  schema: {
+    type: 'string',
+    example: 'password234!@#',
+  },
+};

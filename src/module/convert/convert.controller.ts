@@ -3,7 +3,7 @@ import { ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { ConvertService } from './convert.service';
 import { htmlZipOptions } from '../../config/uploadMulter.options';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CONVERT_API_OPERATION, CONVERT_API_PARAM, UploadHTML } from './swagger/convert.swagger';
+import { CONVERT_API_OPERATION, CONVERT_API_PARAM, CONVERT_API_PARAM2, UploadHTML } from './swagger/convert.swagger';
 
 @ApiTags('HTML 2 PDF API')
 @Controller('request')
@@ -13,6 +13,7 @@ export class ConvertController {
   /* [POST] 'request' swagger setting */
   @ApiOperation(CONVERT_API_OPERATION)
   @ApiParam(CONVERT_API_PARAM)
+  @ApiParam(CONVERT_API_PARAM2)
   @ApiConsumes('multipart/form-data')
   /* [POST] 'request' API */
   @UseInterceptors(FileInterceptor('file', htmlZipOptions))
