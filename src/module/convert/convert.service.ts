@@ -6,10 +6,15 @@ import * as archiver from 'archiver';
 import { Cluster } from 'puppeteer-cluster';
 import { execSync } from 'child_process';
 import { ISendMailOptions } from '@nestjs-modules/mailer';
+import { IncomingWebhook } from '@slack/webhook';
 
 @Injectable()
 export class ConvertService {
-  constructor(public readonly configService: ConfigService, private readonly emailService: EmailService) {}
+  constructor(
+    public readonly configService: ConfigService,
+    private readonly emailService: EmailService,
+    private readonly slack: IncomingWebhook,
+  ) {}
 
   // 업로드한 파일을 저장한다.
   async uploadFile(email: string, file: any): Promise<any> {
@@ -164,63 +169,23 @@ export class ConvertService {
     console.log(zipFilePath);
 
     // 이메일 전송
-    const emailResponse = await this.emailService.sendEmail({
-      to: email,
-      subject: 'HTML to PDF 변환 결과',
-      text: 'HTML to PDF 변환 결과입니다.' + `\n\n\n\n\n\n` + `https://${host}/${zipFilePath}`,
-      from: 'ADMIN',
-    });
-
-    console.log(`https://${host}/${zipFilePath}`);
-
-    // 이메일 전송 결과를 반환한다.
-    return emailResponse;
-  }
-
-  async convertHTML2PDF(host: string, email: string, fileList: Array<Express.Multer.File>): Promise<any> {
-    // 작업을 진행할 폴더를 생성한다. 폴더명은 이메일_현시각_UUID
-    const uploadFilePath = `resource/${email}_${Date.now()}`;
-
-    // uploads 폴더가 존재하지 않을시,
-    if (!fs.existsSync(uploadFilePath)) {
-      // 생성합니다.
-      fs.mkdirSync(uploadFilePath, { recursive: true });
-    }
-
-    // 파일 업로드
-    for (const file of fileList) {
-      try {
-        // 파일 이름은 기존 이름
-        const fileName = file.originalname;
-
-        // 파일 업로드 경로
-        const uploadPath = `${uploadFilePath}/${fileName}`;
-
-        //파일 생성
-        fs.writeFileSync(uploadPath, file.buffer); // file.path 임시 파일 저장소
-
-        return { fileName: file.originalname, uploadPath };
-      } catch (err) {
-        throw new BadRequestException('파일 업로드가 불가능합니다.');
-      }
-    }
-
-    // HTMl -> PDF 변환
-    const savePath = await this.puppeteerConvertCluster(uploadFilePath);
-
-    // PDF 압축
-    const zipFilePath = await this.zipDir(`${uploadFilePath}/converted_pdf.zip`, savePath);
-
-    // 이메일 전송
     const emailOptions: ISendMailOptions = {
       to: email,
       subject: 'HTML to PDF 변환 결과',
       text: 'HTML to PDF 변환 결과입니다.' + `\n\n\n\n\n\n` + `https://${host}/${zipFilePath}`,
       from: 'ADMIN',
     };
-    const emailResponse = await this.emailService.sendEmail(emailOptions);
+    await this.emailService.sendEmail(emailOptions);
 
-    // 이메일 전송 결과를 반환한다.
-    return emailResponse;
+    // 슬랙 알림
+    await this.slack.send({
+      text: `============================== 🚨 HTML to PDF 변환 결과 🚨 ==============================\n
+      \n----------------------------------------------------------------------------------------------\n
+      1. 요청자 이메일 📧: ${email}\n
+      2. 요청 파일 📑: ${fileName}\n
+      3. 요청 시간 ⏰: ${new Date().toLocaleString()}\n
+      4. 변환 결과 📑: https://${host}/${zipFilePath}\n
+      ============================================================`,
+    });
   }
 }
