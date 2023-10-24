@@ -37,6 +37,5 @@ export const CONVERT_API_PARAM2: ApiParamOptions = {
   required: false,
   schema: {
     type: 'string',
-    example: 'password234!@#',
   },
 };

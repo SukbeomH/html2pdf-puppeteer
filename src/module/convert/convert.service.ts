@@ -4,7 +4,8 @@ import { EmailService } from '../notifications/email/email.service';
 import * as fs from 'fs';
 import * as archiver from 'archiver';
 import { Cluster } from 'puppeteer-cluster';
-import { spawnSync } from 'child_process';
+import { execSync } from 'child_process';
+import { ISendMailOptions } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class ConvertService {
@@ -22,7 +23,7 @@ export class ConvertService {
         fs.mkdirSync(uploadFilePath, { recursive: true });
       }
       // 파일 이름은 기존 이름
-      const fileName = 'html.zip';
+      const fileName = file.originalname.replace(' ', '_');
 
       // 파일 업로드 경로
       const uploadPath = `${uploadFilePath}/${fileName}`;
@@ -37,7 +38,7 @@ export class ConvertService {
   }
 
   // 경로에서 파일을 읽어서 압축을 해제한다.
-  async unzipFile(zipFilePath: string, password: string): Promise<string> {
+  async unzipFile(zipFilePath: string): Promise<string> {
     try {
       // 압축 해제 경로
       const unzipPath = zipFilePath.replace('.zip', '');
@@ -48,12 +49,10 @@ export class ConvertService {
         fs.mkdirSync(unzipPath, { recursive: true });
       }
 
-      // 압축 해제
-      if (password) {
-        spawnSync('unzip', ['-P', password, '-d', unzipPath, zipFilePath]);
-      } else {
-        spawnSync('unzip', ['-d', unzipPath, zipFilePath]);
-      }
+      // 압축 해제 execSync
+      const unzipExec = `unzip -UU -d ${unzipPath} ${zipFilePath}`;
+      execSync(unzipExec);
+
       // 압축 해제된 파일 경로를 반환합니다.
       return unzipPath + '/html';
     } catch (err) {
@@ -73,8 +72,10 @@ export class ConvertService {
       throw new BadRequestException('압축파일 내부에 HTML이 존재하지 않습니다.');
     }
 
+    const workDir = unzipPath.split('/')[1];
+    const originalName = unzipPath.split('/')[2];
     // PDF 저장 경로
-    const savePath = `${unzipPath.replace('html/html', '')}pdf_${Date.now()}`;
+    const savePath = `resource/${workDir}/${originalName}_pdf`;
 
     // 경로가 존재하지 않는다면
     if (!fs.existsSync(savePath)) {
@@ -86,7 +87,6 @@ export class ConvertService {
     const puppeteerCluster = await Cluster.launch({
       concurrency: Cluster.CONCURRENCY_CONTEXT,
       maxConcurrency: 100,
-      // puppeteer,
       puppeteerOptions: {
         executablePath: '/usr/bin/firefox',
         product: 'firefox',
@@ -99,7 +99,7 @@ export class ConvertService {
       await page.setContent(data.html);
 
       // 1.5초 대기 (페이지 로딩 대기)
-      new Promise((res) => setTimeout(res, 1500));
+      new Promise((res) => setTimeout(res, 2000));
 
       // PDF 생성
       await page.pdf({
@@ -148,30 +148,77 @@ export class ConvertService {
     return outPath;
   }
 
-  async convertHTML2PDF(host: string, email: string, password: string, file: any): Promise<any> {
+  async convertHTMLzip2PDF(host: string, email: string, file: any): Promise<any> {
     // 파일 업로드
     const { fileName, uploadPath } = await this.uploadFile(email, file);
 
     // 파일 압축 해제
-    const unzipPath = await this.unzipFile(uploadPath, password);
+    const unzipPath = await this.unzipFile(uploadPath);
 
     // HTML -> PDF 변환
     const savePath = await this.puppeteerConvertCluster(unzipPath);
 
+    const zipOutPath = `${uploadPath.split('/')[0]}/${uploadPath.split('/')[1]}/${fileName}_converted_pdf.zip`;
     // PDF 압축
-    const zipFilePath = await this.zipDir(
-      `${unzipPath.replace('html/html', '')}${fileName.replace('.zip', '').replace(' ', '')}_converted_pdf.zip`,
-      savePath,
-    );
+    const zipFilePath = await this.zipDir(zipOutPath, savePath);
+    console.log(zipFilePath);
 
     // 이메일 전송
     const emailResponse = await this.emailService.sendEmail({
-      name: email,
-      email,
+      to: email,
       subject: 'HTML to PDF 변환 결과',
       text: 'HTML to PDF 변환 결과입니다.' + `\n\n\n\n\n\n` + `https://${host}/${zipFilePath}`,
       from: 'ADMIN',
     });
+
+    console.log(`https://${host}/${zipFilePath}`);
+
+    // 이메일 전송 결과를 반환한다.
+    return emailResponse;
+  }
+
+  async convertHTML2PDF(host: string, email: string, fileList: Array<Express.Multer.File>): Promise<any> {
+    // 작업을 진행할 폴더를 생성한다. 폴더명은 이메일_현시각_UUID
+    const uploadFilePath = `resource/${email}_${Date.now()}`;
+
+    // uploads 폴더가 존재하지 않을시,
+    if (!fs.existsSync(uploadFilePath)) {
+      // 생성합니다.
+      fs.mkdirSync(uploadFilePath, { recursive: true });
+    }
+
+    // 파일 업로드
+    for (const file of fileList) {
+      try {
+        // 파일 이름은 기존 이름
+        const fileName = file.originalname;
+
+        // 파일 업로드 경로
+        const uploadPath = `${uploadFilePath}/${fileName}`;
+
+        //파일 생성
+        fs.writeFileSync(uploadPath, file.buffer); // file.path 임시 파일 저장소
+
+        return { fileName: file.originalname, uploadPath };
+      } catch (err) {
+        throw new BadRequestException('파일 업로드가 불가능합니다.');
+      }
+    }
+
+    // HTMl -> PDF 변환
+    const savePath = await this.puppeteerConvertCluster(uploadFilePath);
+
+    // PDF 압축
+    const zipFilePath = await this.zipDir(`${uploadFilePath}/converted_pdf.zip`, savePath);
+
+    // 이메일 전송
+    const emailOptions: ISendMailOptions = {
+      to: email,
+      subject: 'HTML to PDF 변환 결과',
+      text: 'HTML to PDF 변환 결과입니다.' + `\n\n\n\n\n\n` + `https://${host}/${zipFilePath}`,
+      from: 'ADMIN',
+    };
+    const emailResponse = await this.emailService.sendEmail(emailOptions);
 
     // 이메일 전송 결과를 반환한다.
     return emailResponse;
