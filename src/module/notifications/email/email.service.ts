@@ -22,7 +22,7 @@ export class EmailService {
 
   /* 이메일 전송 주소 변경 */
   changeEmailFrom() {
-    this.mailerService.addTransporter('bot', {
+    this.mailerService.addTransporter(this.configService.get<string>('EMAIL_FROM_TESTER'), {
       host: this.configService.get<string>('EMAIL_HOST_TESTER'),
       port: 587,
       from: this.configService.get<string>('EMAIL_FROM_TESTER'),
