@@ -168,7 +168,6 @@ export class ConvertService {
       to: email,
       subject: 'HTML to PDF 변환 결과',
       text: 'HTML to PDF 변환 결과입니다.' + `\n\n\n\n\n\n` + `https://${host}/${zipFilePath}`,
-      from: 'ADMIN',
     };
     await this.emailService.sendEmail(emailOptions);
   }
