@@ -28,7 +28,7 @@ export class ConvertController {
     const { host } = header;
     this.convertService.convertHTMLzip2PDF(host, email, file);
 
-    const result = { message: '요청이 완료되었습니다. 변환이 완료되면 이메일로 링크가 송부됩니다.' };
+    const result = { message: '요청이 완료되었습니다. 변환이 완료되면 슬랙/이메일로 링크가 송부됩니다.' };
 
     return result;
   }

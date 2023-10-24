@@ -184,7 +184,7 @@ export class ConvertService {
       1. 요청자 이메일 📧: ${email}\n
       2. 요청 파일 📑: ${fileName}\n
       3. 요청 시간 ⏰: ${new Date().toLocaleString()}\n
-      4. 변환 결과 📑: https://${host}/${zipFilePath}\n
+      4. 변환 결과 📑: <https://${host}/${zipFilePath}>\n
       ============================================================`,
     });
   }
