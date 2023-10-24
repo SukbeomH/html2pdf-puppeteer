@@ -10,7 +10,10 @@ export class EmailService {
   async sendEmail(sendEmailForm: ISendMailOptions): Promise<void> {
     this.changeEmailFrom();
     try {
-      await this.mailerService.sendMail({ ...sendEmailForm, transporterName: 'Tester' });
+      await this.mailerService.sendMail({
+        ...sendEmailForm,
+        transporterName: this.configService.get<string>('EMAIL_FROM_TESTER'),
+      });
     } catch (err) {
       console.log(err);
       throw new BadRequestException('메일 전송에 실패했습니다.');
