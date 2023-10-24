@@ -12,6 +12,8 @@ export class EmailService {
     try {
       await this.mailerService.sendMail({
         ...sendEmailForm,
+        from: this.configService.get<string>('EMAIL_FROM_TESTER'),
+        sender: this.configService.get<string>('EMAIL_FROM_TESTER'),
         transporterName: this.configService.get<string>('EMAIL_FROM_TESTER'),
       });
     } catch (err) {
