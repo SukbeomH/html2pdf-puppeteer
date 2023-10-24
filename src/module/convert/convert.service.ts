@@ -22,8 +22,11 @@ export class ConvertService {
         // 생성합니다.
         fs.mkdirSync(uploadFilePath, { recursive: true });
       }
-      // 파일 이름은 기존 이름
-      const fileName = file.originalname.replace(' ', '_');
+      // // 파일 이름은 기존 이름
+      // const fileName = file.originalname.replace(' ', '_');
+
+      // 파일 이름은 html
+      const fileName = 'html.zip';
 
       // 파일 업로드 경로
       const uploadPath = `${uploadFilePath}/${fileName}`;
@@ -31,7 +34,7 @@ export class ConvertService {
       //파일 생성
       fs.writeFileSync(uploadPath, file.buffer); // file.path 임시 파일 저장소
 
-      return { fileName: file.originalname, uploadPath };
+      return { fileName, uploadPath };
     } catch (err) {
       throw new BadRequestException('파일 업로드가 불가능합니다.');
     }
@@ -51,10 +54,11 @@ export class ConvertService {
 
       // 압축 해제 execSync
       const unzipExec = `unzip -UU -d ${unzipPath} ${zipFilePath}`;
+      // const unzipExec = `7z x ${zipFilePath} -o${unzipPath} -aoa`;
       execSync(unzipExec);
 
       // 압축 해제된 파일 경로를 반환합니다.
-      return unzipPath + '/html';
+      return unzipPath;
     } catch (err) {
       throw new BadRequestException('파일 압축 해제가 불가능합니다.');
     }
@@ -75,7 +79,7 @@ export class ConvertService {
     const workDir = unzipPath.split('/')[1];
     const originalName = unzipPath.split('/')[2];
     // PDF 저장 경로
-    const savePath = `resource/${workDir}/${originalName}_pdf`;
+    const savePath = `resource/${workDir}/pdf`;
 
     // 경로가 존재하지 않는다면
     if (!fs.existsSync(savePath)) {
@@ -158,7 +162,7 @@ export class ConvertService {
     // HTML -> PDF 변환
     const savePath = await this.puppeteerConvertCluster(unzipPath);
 
-    const zipOutPath = `${uploadPath.split('/')[0]}/${uploadPath.split('/')[1]}/${fileName}_converted_pdf.zip`;
+    const zipOutPath = `${uploadPath.split('/')[0]}/${uploadPath.split('/')[1]}/converted_pdf.zip`;
     // PDF 압축
     const zipFilePath = await this.zipDir(zipOutPath, savePath);
     console.log(zipFilePath);
