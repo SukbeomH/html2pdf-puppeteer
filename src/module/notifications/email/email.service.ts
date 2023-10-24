@@ -10,7 +10,7 @@ export class EmailService {
   async sendEmail(sendEmailForm: ISendMailOptions): Promise<void> {
     this.changeEmailFrom();
     try {
-      await this.mailerService.sendMail({ ...sendEmailForm, transporterName: 'Admin' });
+      await this.mailerService.sendMail({ ...sendEmailForm, transporterName: 'Tester' });
     } catch (err) {
       console.log(err);
       throw new BadRequestException('메일 전송에 실패했습니다.');
@@ -19,9 +19,9 @@ export class EmailService {
 
   /* 이메일 전송 주소 변경 */
   changeEmailFrom() {
-    this.mailerService.addTransporter('Admin', {
+    this.mailerService.addTransporter('Tester', {
       host: this.configService.get<string>('EMAIL_HOST_TESTER'),
-      port: this.configService.get<number>('EMAIL_PORT_TESTER'),
+      port: 587,
       from: this.configService.get<string>('EMAIL_FROM_TESTER'),
       auth: {
         user: this.configService.get<string>('EMAIL_USERNAME_TESTER'),
