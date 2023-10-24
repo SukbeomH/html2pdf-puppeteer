@@ -6,15 +6,10 @@ import * as archiver from 'archiver';
 import { Cluster } from 'puppeteer-cluster';
 import { execSync } from 'child_process';
 import { ISendMailOptions } from '@nestjs-modules/mailer';
-import { IncomingWebhook } from '@slack/webhook';
 
 @Injectable()
 export class ConvertService {
-  constructor(
-    public readonly configService: ConfigService,
-    private readonly emailService: EmailService,
-    private readonly slack: IncomingWebhook,
-  ) {}
+  constructor(public readonly configService: ConfigService, private readonly emailService: EmailService) {}
 
   // 업로드한 파일을 저장한다.
   async uploadFile(email: string, file: any): Promise<any> {
@@ -176,16 +171,5 @@ export class ConvertService {
       from: 'ADMIN',
     };
     await this.emailService.sendEmail(emailOptions);
-
-    // 슬랙 알림
-    await this.slack.send({
-      text: `============================== 🚨 HTML to PDF 변환 결과 🚨 ==============================\n
-      \n----------------------------------------------------------------------------------------------\n
-      1. 요청자 이메일 📧: ${email}\n
-      2. 요청 파일 📑: ${fileName}\n
-      3. 요청 시간 ⏰: ${new Date().toLocaleString()}\n
-      4. 변환 결과 📑: <https://${host}/${zipFilePath}>\n
-      ============================================================`,
-    });
   }
 }
