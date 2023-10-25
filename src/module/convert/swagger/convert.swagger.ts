@@ -28,7 +28,6 @@ export const CONVERT_API_PARAM: ApiParamOptions = {
   required: true,
   schema: {
     type: 'string',
-    example: 'example@example.com',
   },
 };
 export const CONVERT_API_PARAM2: ApiParamOptions = {
