@@ -92,7 +92,8 @@ export class ConvertService {
       // Puppeteer Cluster 생성
       const puppeteerCluster = await Cluster.launch({
         concurrency: Cluster.CONCURRENCY_CONTEXT,
-        maxConcurrency: 100,
+        maxConcurrency: 50,
+        timeout: 10000,
         puppeteerOptions: {
           executablePath: '/usr/bin/firefox',
           product: 'firefox',
@@ -105,7 +106,7 @@ export class ConvertService {
         await page.setContent(data.html);
 
         // 1.5초 대기 (페이지 로딩 대기)
-        new Promise((res) => setTimeout(res, 2000));
+        new Promise((res) => setTimeout(res, 1000));
 
         // PDF 생성
         await page.pdf({
