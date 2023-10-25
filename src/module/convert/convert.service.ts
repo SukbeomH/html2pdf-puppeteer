@@ -42,7 +42,7 @@ export class ConvertService {
   }
 
   // 경로에서 파일을 읽어서 압축을 해제한다.
-  async unzipFile(zipFilePath: string, email: string): Promise<string> {
+  async unzipFile(zipFilePath: string, email: string, password: string): Promise<string> {
     try {
       // 압축 해제 경로
       const unzipPath = zipFilePath.replace('.zip', '');
@@ -54,8 +54,12 @@ export class ConvertService {
       }
 
       // 압축 해제 execSync
-      const unzipExec = `unzip -UU -d ${unzipPath} ${zipFilePath}`;
-      // const unzipExec = `7z x ${zipFilePath} -o${unzipPath} -aoa`;
+      let unzipExec: string;
+      if (!password) {
+        unzipExec = `unzip -UU -d ${unzipPath} ${zipFilePath}`;
+      } else {
+        unzipExec = `unzip -UU -P ${password} -d ${unzipPath} ${zipFilePath}`;
+      }
       execSync(unzipExec);
 
       // 압축 해제된 파일 경로를 반환합니다.
@@ -164,12 +168,12 @@ export class ConvertService {
     }
   }
 
-  async convertHTMLzip2PDF(host: string, email: string, file: any): Promise<any> {
+  async convertHTMLzip2PDF(host: string, email: string, file: Express.Multer.File, password: string): Promise<any> {
     // 파일 업로드
     const { uploadPath } = await this.uploadFile(email, file);
 
     // 파일 압축 해제
-    const unzipPath = await this.unzipFile(uploadPath, email);
+    const unzipPath = await this.unzipFile(uploadPath, email, password);
 
     // HTML -> PDF 변환
     const savePath = await this.puppeteerConvertCluster(unzipPath, email);
