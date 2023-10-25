@@ -8,6 +8,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { SERVE_STATIC_CONFIG } from '../config/serveStatic.config';
 import { EMAIL_CONFIG } from '../config/email.config';
 import { ConvertModule } from './convert/convert.module';
+import { ManageModule } from './manage/manage.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ConvertModule } from './convert/convert.module';
     WinstonModule.forRoot(WINSTON_CONFIG),
     ServeStaticModule.forRoot(SERVE_STATIC_CONFIG),
     ConvertModule,
+    ManageModule,
   ],
 })
 export class AppModule implements NestModule {

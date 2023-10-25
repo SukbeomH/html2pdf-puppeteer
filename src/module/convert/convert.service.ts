@@ -12,7 +12,7 @@ export class ConvertService {
   constructor(public readonly configService: ConfigService, private readonly emailService: EmailService) {}
 
   // 업로드한 파일을 저장한다.
-  async uploadFile(email: string, file: any): Promise<any> {
+  async uploadFile(email: string, file: Express.Multer.File): Promise<any> {
     try {
       // 작업을 진행할 폴더를 생성한다. 폴더명은 이메일_현시각_UUID
       const uploadFilePath = `resource/${email}_${Date.now()}`;
@@ -23,7 +23,7 @@ export class ConvertService {
         fs.mkdirSync(uploadFilePath, { recursive: true });
       }
       // // 파일 이름은 기존 이름
-      // const fileName = file.originalname.replace(' ', '_');
+      const fileNameOrigin = decodeURIComponent(escape(file.originalname)).split('.')[0].replace(/ /gi, '_');
 
       // 파일 이름은 html
       const fileName = 'html.zip';
@@ -34,7 +34,7 @@ export class ConvertService {
       //파일 생성
       fs.writeFileSync(uploadPath, file.buffer); // file.path 임시 파일 저장소
 
-      return { fileName, uploadPath };
+      return { fileNameOrigin, uploadPath };
     } catch (err) {
       await this.sendFailMail(email, `파일 업로드가 불가능합니다, \n ${err}`);
       throw new BadRequestException('파일 업로드가 불가능합니다.');
@@ -168,9 +168,17 @@ export class ConvertService {
     }
   }
 
+  async validateEmail(email: string): Promise<void> {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      throw new BadRequestException('이메일 형식이 올바르지 않습니다.');
+    }
+  }
+
   async convertHTMLzip2PDF(host: string, email: string, file: Express.Multer.File, password: string): Promise<any> {
+    // await
     // 파일 업로드
-    const { uploadPath } = await this.uploadFile(email, file);
+    const { fileNameOrigin, uploadPath } = await this.uploadFile(email, file);
 
     // 파일 압축 해제
     const unzipPath = await this.unzipFile(uploadPath, email, password);
@@ -178,7 +186,7 @@ export class ConvertService {
     // HTML -> PDF 변환
     const savePath = await this.puppeteerConvertCluster(unzipPath, email);
 
-    const zipOutPath = `${uploadPath.split('/')[0]}/${uploadPath.split('/')[1]}/converted_pdf.zip`;
+    const zipOutPath = `${uploadPath.split('/')[0]}/${uploadPath.split('/')[1]}/${fileNameOrigin}_converted_pdf.zip`;
     // PDF 압축
     const zipFilePath = await this.zipDir(zipOutPath, savePath, email);
     console.log(zipFilePath);
@@ -187,7 +195,10 @@ export class ConvertService {
     const emailOptions: ISendMailOptions = {
       to: email,
       subject: 'HTML to PDF 변환 결과',
-      text: 'HTML to PDF 변환 결과입니다.' + `\n\n\n\n` + `https://${host}/${zipFilePath}`,
+      html:
+        'HTML to PDF 변환 결과입니다.' +
+        `<br /><br />` +
+        `<a href='https://${host}/${zipFilePath}'>여기를 눌러 다운로드해 주세요</a>`,
     };
     await this.emailService.sendEmail(emailOptions);
   }

@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 
-export const htmlZipOptions = {
+export const htmlZipOptions: MulterOptions = {
   /**
    * @description HTML 압축 파일을 서버에 업로드한다.
    * @param request Request 객체
@@ -10,7 +10,7 @@ export const htmlZipOptions = {
    */
   fileFilter: (request, _file, callback) => {
     if (request.headers['content-length'] > 209715200) {
-      callback(new BadRequestException('파일 크기는 160MB를 초과할 수 없습니다.'));
+      callback(new BadRequestException('파일 크기는 160MB를 초과할 수 없습니다.'), false);
     }
     callback(null, true);
   },
