@@ -4,7 +4,7 @@ import { EmailService } from '../notifications/email/email.service';
 import * as fs from 'fs';
 import * as archiver from 'archiver';
 import { Cluster } from 'puppeteer-cluster';
-import { execSync } from 'child_process';
+import { exec, execSync } from 'child_process';
 import { ISendMailOptions } from '@nestjs-modules/mailer';
 
 @Injectable()
@@ -176,7 +176,6 @@ export class ConvertService {
   }
 
   async convertHTMLzip2PDF(host: string, email: string, file: Express.Multer.File, password: string): Promise<any> {
-    // await
     // 파일 업로드
     const { fileNameOrigin, uploadPath } = await this.uploadFile(email, file);
 
@@ -194,7 +193,7 @@ export class ConvertService {
     // 이메일 전송
     const emailOptions: ISendMailOptions = {
       to: email,
-      subject: 'HTML to PDF 변환 결과',
+      subject: `HTML to PDF 변환 결과 [${fileNameOrigin}]`,
       html:
         'HTML to PDF 변환 결과입니다.' +
         `<br /><br />` +
@@ -210,5 +209,69 @@ export class ConvertService {
       text: `HTML to PDF 변환 실패입니다. 다시 시도해주세요.` + `\n\n\n` + `${message}`,
     };
     await this.emailService.sendEmail(emailOptions);
+  }
+
+  async mergePDF(host: string, email: string, file: Express.Multer.File, password: string): Promise<void> {
+    // 파일 업로드
+    const { fileNameOrigin, uploadPath } = await this.uploadFile(email, file);
+
+    // 파일 압축 해제
+    const unzipPath = await this.unzipFile(uploadPath, email, password);
+
+    // PDF 합치기
+    await this.mergeExecPDF(fileNameOrigin, unzipPath, email, host);
+  }
+
+  async mergeExecPDF(fileNameOrigin: string, unzipPath: string, email: string, host: string): Promise<string> {
+    try {
+      // unzipPath에 있는 pdf 파일을 모두 읽어서 pdf 파일 목록을 만든다.
+      const pdfFilePathList = fs.readdirSync(unzipPath, {
+        encoding: 'utf8',
+        recursive: true,
+      });
+
+      // 파일 리스트가 없다면 종료
+      if (pdfFilePathList.length === 0) {
+        return;
+      }
+
+      // 작업 경로
+      const workDir = unzipPath.split('/')[1];
+
+      // PDF 저장 경로
+      const beforePath = `resource/${workDir}`;
+      const savePath = `resource/${workDir}/merged`;
+
+      // 경로가 존재하지 않는다면
+      if (!fs.existsSync(savePath)) {
+        // create directory
+        fs.mkdirSync(savePath, { recursive: true });
+      }
+
+      exec(`python3 ./src/python/merge.py ${beforePath}/ ${fileNameOrigin}_merged.pdf`, async (err) => {
+        if (err) {
+          console.log(err);
+        }
+        // PDF 압축
+        const zipOutPath = `${beforePath}/${fileNameOrigin}_merged_pdf.zip`;
+        const zipFilePath = await this.zipDir(zipOutPath, savePath, email);
+
+        // 이메일 전송
+        const emailOptions: ISendMailOptions = {
+          to: email,
+          subject: `PDF 합치기 결과 [${fileNameOrigin}]`,
+          html:
+            'PDF 합치기 결과입니다.' +
+            `<br /><br />` +
+            `<a href='https://${host}/${zipFilePath}'>여기를 눌러 다운로드해 주세요</a>`,
+        };
+        await this.emailService.sendEmail(emailOptions);
+      });
+
+      // PDF 저장 경로를 반환한다.
+      return savePath;
+    } catch (err) {
+      await this.sendFailMail(email, `PDF 합치기에 실패했습니다, \n ${err}`);
+    }
   }
 }

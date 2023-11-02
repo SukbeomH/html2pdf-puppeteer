@@ -105,3 +105,54 @@ export const getDateFormMMDDHHMM = (originalDate: Date): string => {
 
   return `${month}월 ${day}일 (${hour}시 ${minute}분)`;
 };
+
+// 정보 리스트를 받아서 페이지네이션 정보를 만든다
+export const createSplitListForPagination = async (
+  list: any[],
+  listLength: number,
+  progressNo: number,
+  splitNo: number,
+): Promise<{ list: any[]; progressNo: number; totalProgress: number }> => {
+  // 페이지네이션 개수를 구한다 (splitNo 개씩)
+  const pagination: number = Math.ceil(listLength / splitNo);
+  // progressNo가 0이라면 error
+  if (progressNo <= 0) {
+    throw new BadRequestException('progressNo는 1부터 시작합니다.');
+  }
+  if (pagination === 0) {
+    throw new BadRequestException('totalProgress가 0입니다.');
+  }
+  // progressNo가 페이지네이션 개수보다 크다면 error
+  if (progressNo > pagination) return;
+  // 페이지네이션 개수가 1이라면 그대로 리턴
+  if (pagination === 1) return { list, progressNo, totalProgress: pagination };
+  // 페이지네이션 개수가 2이상이라면 splitNo 개씩 묶어서 리턴
+  if (pagination > 1) {
+    const splitList = [];
+    for (let i = 0; i < listLength; i += splitNo) {
+      splitList.push(list.slice(i, i + splitNo));
+    }
+    return { list: splitList[progressNo - 1], progressNo, totalProgress: pagination };
+  }
+};
+
+// 분할 함수 (배열)
+export const ArraySliceCnt = (arrData: string[], baseCnt: number, targetCnt: number): any => {
+  const len = arrData.length;
+  if (len > baseCnt) {
+    // 나머지 처리 위한 +1
+    const tmpArr = new Array(Math.floor(len / targetCnt) + 1);
+    for (const i of tmpArr) {
+      const tmpData = arrData.splice(0, targetCnt);
+      tmpData.length != 0 ? tmpArr.push(tmpData) : '';
+    }
+    return tmpArr;
+  } else {
+    const tmpArr = new Array(Math.floor(len / baseCnt) + 1);
+    for (const i of tmpArr) {
+      const tmpData = arrData.splice(0, baseCnt);
+      tmpData.length != 0 ? tmpArr.push(tmpData) : '';
+    }
+    return tmpArr;
+  }
+};

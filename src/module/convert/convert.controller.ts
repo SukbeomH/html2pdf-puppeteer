@@ -3,7 +3,15 @@ import { ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { ConvertService } from './convert.service';
 import { htmlZipOptions } from '../../config/uploadMulter.options';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CONVERT_API_OPERATION, CONVERT_API_PARAM, CONVERT_API_PARAM2, UploadHTML } from './swagger/convert.swagger';
+import {
+  CONVERT_API_OPERATION,
+  CONVERT_API_PARAM,
+  CONVERT_API_PARAM2,
+  MERGE_API_OPERATION,
+  MERGE_API_PARAM,
+  MERGE_API_PARAM2,
+  UploadHTML,
+} from './swagger/convert.swagger';
 
 @ApiTags('HTML 2 PDF API')
 @Controller('request')
@@ -29,6 +37,29 @@ export class ConvertController {
     this.convertService.convertHTMLzip2PDF(host, email, file, password);
 
     const result = { message: '요청이 완료되었습니다. 변환이 완료되면 슬랙/이메일로 링크가 송부됩니다.' };
+
+    return result;
+  }
+
+  /* [POST] 'merge/:email' swagger setting */
+  @ApiOperation(MERGE_API_OPERATION)
+  @ApiParam(MERGE_API_PARAM)
+  @ApiParam(MERGE_API_PARAM2)
+  @ApiConsumes('multipart/form-data')
+  /* [POST] 'merge/:email' API */
+  @UseInterceptors(FileInterceptor('file', htmlZipOptions))
+  @UploadHTML()
+  @Post('/merge/:email')
+  mergePDFList(
+    @Headers() header: any,
+    @Param('email') email: string,
+    @Param('password') password: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): any {
+    const { host } = header;
+    this.convertService.mergePDF(host, email, file, password);
+
+    const result = { message: '요청이 완료되었습니다. 병합이 완료되면 슬랙/이메일로 링크가 송부됩니다.' };
 
     return result;
   }

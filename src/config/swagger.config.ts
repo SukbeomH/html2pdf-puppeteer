@@ -13,14 +13,6 @@ export function setupSwagger(app: INestApplication): void {
     .setTitle('HTML 2 PDF 요청 페이지')
     .setDescription('HTML 2 PDF 요청 페이지 API 문서입니다.')
     .setVersion('2023')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-      },
-      'accessToken', // @ApiBearerAuth('accessToken') => 'accessToken'을 맞춰 주어야 한다
-    )
     .build();
 
   const document = SwaggerModule.createDocument(app, options);
