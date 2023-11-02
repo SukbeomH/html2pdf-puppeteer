@@ -1,0 +1,53 @@
+version: '3.9'
+services:
+  puppeteer_net:
+    image: traefik:v2.10
+    command:
+      - --log.level=ERROR
+      # - --api.insecure=true # 8080 포트로 접속 가능
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:4999
+      - --entrypoints.web.forwardedHeaders.insecure=true
+    ports:
+      - target: 4999
+        published: 4999
+        mode: host
+    restart: on-failure
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - puppeteer_net_default
+
+  puppeteer_nest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./src:/myfolder/src
+      - ./resource:/myfolder/resource
+      - ./logs:/myfolder/logs
+    env_file:
+      - ./.env
+    environment:
+      - TZ=Asia/Seoul
+    restart: on-failure
+    deploy:
+      restart_policy:
+        condition: on-failure
+      replicas: 3
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.puppeteer_nest.rule=Host(`localhost`)
+      - traefik.http.routers.puppeteer_nest.service=puppeteer_nest
+      - traefik.http.services.puppeteer_nest.loadbalancer.server.port=4999
+      - traefik.http.routers.puppeteer_nest.entrypoints=web
+      - traefik.docker.network=puppeteer_net_default
+    networks:
+      - puppeteer_net_default
+    depends_on:
+      - puppeteer_net
+
+networks:
+  puppeteer_net_default:
+    driver: bridge

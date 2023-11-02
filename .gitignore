@@ -66,10 +66,6 @@ script.sh
 init.sh
 *.sh
 
-# Docker
-Dockerfile
-docker-compose.yaml
-
 # Docker prod
 Dockerfile.prod
 Dockerfile.dev
