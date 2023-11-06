@@ -27,3 +27,6 @@ RUN PUPPETEER_PRODUCT=firefox npm install puppeteer
 COPY . /myfolder
 
 CMD npm run start:dev
+
+# HEALTHCHECK --interval=30s --timeout=300s --retries=2 \
+#     CMD curl -f http://localhost:4999/health -s -w %{http_code} | grep 200 || kill -9 `pgrep -f "nest start"`
