@@ -109,7 +109,7 @@ export class ConvertService {
         // 페이지 생성
         await page.setContent(data.html);
 
-        // 1초 대기 (페이지 로딩 대기)
+        // 대기 (페이지 로딩 대기)
         await page.waitForSelector('*');
 
         // PDF 생성
