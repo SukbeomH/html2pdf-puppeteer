@@ -109,8 +109,8 @@ export class ConvertService {
         // 페이지 생성
         await page.setContent(data.html);
 
-        // 1.5초 대기 (페이지 로딩 대기)
-        new Promise((res) => setTimeout(res, 1000));
+        // 1초 대기 (페이지 로딩 대기)
+        await page.waitForSelector('*');
 
         // PDF 생성
         await page.pdf({
