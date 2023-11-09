@@ -44,9 +44,9 @@ services:
       - traefik.http.routers.puppeteer_nest.entrypoints=web
       - traefik.docker.network=puppeteer_net_default
       # Traefik 헬스 체크를 통해 응답이 느린 컨테이너는 제외시킴 
-      # - traefik.http.services.puppeteer_nest.loadbalancer.healthcheck.path=/health
-      # - traefik.http.services.puppeteer_nest.loadbalancer.healthcheck.interval=11s
-      # - traefik.http.services.puppeteer_nest.loadbalancer.healthcheck.timeout=1s
+      - traefik.http.services.puppeteer_nest.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.puppeteer_nest.loadbalancer.healthcheck.interval=5s
+      - traefik.http.services.puppeteer_nest.loadbalancer.healthcheck.timeout=1s
     networks:
       - puppeteer_net_default
     depends_on:
